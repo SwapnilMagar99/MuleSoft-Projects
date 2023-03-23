@@ -1,0 +1,11 @@
+{
+  "sampleData": {
+    "c50df20b-9831-49d0-9683-17a974dd69a2": {
+      "payload": "sample_data/list_json.json",
+      "vars-rootMessage": "sample_data/message.dwl"
+    },
+    "cabbd52e-0d0f-48da-bcbf-c8a063efe494": {
+      "payload": "sample_data/json.json"
+    }
+  }
+}

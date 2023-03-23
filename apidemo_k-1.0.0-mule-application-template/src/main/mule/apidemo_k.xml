@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="2404a44a-55d5-4557-9192-7e19f372bcae" >
+		<http:listener-connection host="0.0.0.0" port="8000" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="c18023a1-0db1-400b-8dc3-90bc655ad843" >
+		<db:oracle-connection host="erpmechsoft.oracle.com" user="system" password="manager" serviceName="VIS" />
+	</db:config>
+	<flow name="apidemo_kFlow" doc:id="025674d6-0b95-490f-a571-4ad7bfceeab9" >
+		<http:listener doc:name="Listener" doc:id="688d7cf2-65c3-49e7-8a8f-c23bceb30151" config-ref="HTTP_Listener_config" path="apitest"/>
+		<db:select doc:name="Select" doc:id="8b6a5923-5f8d-4b1d-a76e-ace0481235d4" config-ref="Database_Config">
+			<db:sql ><![CDATA[Select * from v$instance]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="5b61b502-28a9-4da0-bc07-97fbc2020c8c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="d228cd9b-eda1-4779-a187-7d77ba52b6b9" message="#[payload]"/>
+	</flow>
+</mule>

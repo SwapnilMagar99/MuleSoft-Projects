@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="57f38e3a-0ff9-491a-b309-b8f2c7d37b93" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="7ad05cbf-ba46-4a12-820f-b3542ffa80e9" >
+		<db:oracle-connection host="LocalHost" user="system" password="system" instance="xe" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="dcb5cf38-7ea8-4d6c-8861-b7d0a9a26fc2" >
+		<salesforce:basic-connection username="cpqbillingorg@gmail.com" password="salesforce4" securityToken="6X6NFms3bGqNytOJXe43TrHk" />
+	</salesforce:sfdc-config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="4fc5afc5-8227-4acd-b88b-0a40e4c64ae5" />
+	<db:config name="Database_Config1" doc:name="Database Config" doc:id="8452b42a-8656-4137-ba3b-0f74e1b9537b" >
+		<db:oracle-connection host="erpmechsoft.oracle.com" user="system" password="manager" serviceName="VIS" />
+	</db:config>
+	<flow name="SF_To_DB_Flow" doc:id="70fb58d6-b621-49a2-b092-52b763a9706e" >
+		<http:listener doc:name="Listener" doc:id="16f71048-44b8-4ded-b278-dd4a8de7d92d" config-ref="HTTP_Listener_config" path="/sf"/>
+		<salesforce:query-all doc:name="Query all" doc:id="4cf7fda4-80a1-4b46-adca-35322c6b3192" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[select Job_Id__c, Name,MIN_SALARY__c,MAX_SALARY__c from Jobs__c]]></salesforce:salesforce-query>
+		</salesforce:query-all>
+		<set-variable doc:name="Job ID" doc:id="f9877412-74d9-4f79-b38e-458e06f39f89" variableName="jobId" value="#[attributes.queryParams.jobId]"/>
+		<set-variable value="#[attributes.queryParams.jobtitle]" doc:name="Job Title" doc:id="db6490bb-6cd3-4a3a-8b71-d62edcd2228b" variableName="jobTitle"/>
+		<set-variable value="#[attributes.queryParams.minSalary]" doc:name="MIN Salary" doc:id="f1f780b4-f6cc-4693-b7d4-a953934acbfa" variableName="minSalary"/>
+		<set-variable value="#[attributes.queryParams.maxSalary]" doc:name="Max Salary" doc:id="9512ae22-6928-4f78-9e13-ac2eecad4c67" variableName="maxSalary"/>
+		<ee:transform doc:name="Transform Message" doc:id="21e513e3-3aaf-4d8f-9ffb-765822981d50">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="266f382b-3153-42a1-8315-804ae8f69e86" >
+			<db:insert doc:name="Insert" doc:id="c50df20b-9831-49d0-9683-17a974dd69a2" config-ref="Database_Config">
+			<db:sql><![CDATA[insert into jobs (job_id,job_title,min_salary,max_salary) Values(:job_id,:job_title,:min_salary,:max_salary)   ]]></db:sql>
+			<db:input-parameters><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+	job_id: vars.rootMessage.payload[0].Job_Id__c default 0,
+	job_title: vars.rootMessage.payload[0].Name default "",
+	min_salary: vars.rootMessage.payload[0].MIN_SALARY__c,
+	max_salary: vars.rootMessage.payload[0].MAX_SALARY__c
+}]]]></db:input-parameters>
+		</db:insert>
+		</foreach>
+		<logger level="INFO" doc:name="Logger" doc:id="929b7480-59ca-4ddb-9aa8-1d09dc2f51f8" message="#[payload]"/>
+	</flow>
+	<flow name="salesforce-to-oracleFlow" doc:id="a5eec39c-bcce-4c02-bfdf-6ee0b8f48a3a" >
+		<http:listener doc:name="Listener" doc:id="3a8c856a-f5c0-4d43-b6f3-450a713de2b8" config-ref="HTTP_Listener_config" path="test"/>
+		<salesforce:query doc:name="Query" doc:id="b0dc05b7-2a8c-46e4-a8c9-69f3ff382a14" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[select Job_Id__c, Name,MIN_SALARY__c,MAX_SALARY__c from Jobs__c]]></salesforce:salesforce-query>
+		</salesforce:query>
+		<ee:transform doc:name="Transform Message" doc:id="204e4b90-bad3-4cf0-9251-31179b4e766d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="cabbd52e-0d0f-48da-bcbf-c8a063efe494" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into jobs (job_id,job_title,min_salary,max_salary) Values(:Job_Id__c,:Name,:MIN_SALARY__c,:MAX_SALARY__c);   
+]]></db:sql>
+			<db:input-parameters ><![CDATA[#[%dw 2.0
+output application/json
+---
+payload map ((payload01 , indexOfPayload01) ->
+{
+	job_id: payload01.Job_Id__c default 0,
+	job_title: payload01.Name default "",
+	min_salary: payload01.MIN_SALARY__c,
+	max_salary: payload01.MAX_SALARY__c
+} )]]]></db:input-parameters>
+		</db:insert>
+		<logger level="INFO" doc:name="Logger" doc:id="0ca27be0-7e70-4462-8f50-dc6ccf3c08b0" message="#[payload]"/>
+	</flow>
+	<flow name="DB_Select_to_Create_SF_Flow" doc:id="66b3283b-192e-4a0c-91d0-ca72e3e3b4ff" >
+		<http:listener doc:name="Listener" doc:id="97cd17d2-fa5b-4721-8b60-5e2f632294ac" config-ref="HTTP_Listener_config" path="select"/>
+		<db:select doc:name="Select" doc:id="c84dfa6e-2d9b-4a8c-abfb-d5964a2d86a9" config-ref="Database_Config1">
+			<db:sql ><![CDATA[select * from jobs]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="63f43239-be25-4ccb-a837-b6bff4077b9a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create doc:name="Create" doc:id="b8607e1f-050c-4545-aa01-a10f72ffbc62" config-ref="Salesforce_Config" type="Jobs__c">
+			<salesforce:records ><![CDATA[#[output application/json
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Name: payload01.JOB_TITLE,
+	Job_Id__c: payload01.JOB_ID,
+	MAX_SALARY__c: payload01.MAX_SALARY,
+	MIN_SALARY__c: payload01.MIN_SALARY
+	
+}]]]></salesforce:records>
+		</salesforce:create>
+		<logger level="INFO" doc:name="Logger" doc:id="f3dcf9c9-41e9-42bd-b8a6-3b18ac6a7efc" message="#[payload]"/>
+	</flow>
+	<flow name="sfFlow" doc:id="592e8b7e-85cb-41b3-9b3d-fa11fea9ce3b" >
+		<salesforce:create type="Jobs__c" doc:name="Create" doc:id="8eda69be-0eb3-4132-8c33-62c8bf410a4b" config-ref="Salesforce_Config" >
+			<salesforce:records ><![CDATA[#[output application/json
+---
+payload]]]></salesforce:records>
+		</salesforce:create>
+		<logger level="INFO" doc:name="Logger" doc:id="0d9e7242-72fa-4ec8-ae45-25d5af4b5406" message="#[payload]" />
+	</flow>
+	<flow name="DB_Insert_to_Create_SF_Flow" doc:id="a6c19508-395f-4da7-a8f8-6a043bbee69a" >
+		<http:listener doc:name="Listener" doc:id="e8efb3a3-2b3a-431b-b0b3-6ed51dc4f263" config-ref="HTTP_Listener_config" path="insert"/>
+		<db:insert doc:name="Insert" doc:id="f6bc2e06-795f-4527-ba28-52bf9c53a601" config-ref="Database_Config">
+			<db:sql ><![CDATA[INSERT INTO jobs(job_id,job_title,min_salary,max_salary) VALUES (:id,:job_title,min_salary,max_salary)
+]]></db:sql>
+		</db:insert>
+		<logger level="INFO" doc:name="Logger" doc:id="33576dd7-fd09-4ddd-9bcf-0ed2035bac74" message="#[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="89f293cc-ce71-4083-ac6b-d8efb5d25005" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+{
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="Flow Reference" doc:id="f5e01a72-8d3c-4916-8829-bf4718482345" name="sfFlow"/>
+	</flow>
+</mule>
