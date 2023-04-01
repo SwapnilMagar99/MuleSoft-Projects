@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="0475c084-9bc7-48d5-baaf-675040460df4" >
+		<http:listener-connection host="0.0.0.0" port="8080" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="6bbcb7fa-b62c-4ed2-b810-ec246e99cf10" >
+		<db:oracle-connection host="LocalHost" user="system" password="system" instance="xe" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="f48bfd6c-5e7b-4eea-8783-a4a91423d5f3" >
+		<salesforce:basic-connection username="cpqbillingorg@gmail.com" password="salesforce44" securityToken="tBhds6mkkHSYkxl95Od05jY8" />
+	</salesforce:sfdc-config>
+	<flow name="Oracle_DB_Select_To_Salesforce_Create_Query_Flow" doc:id="9e1ea849-7db5-4927-aa55-251458daeeed" >
+		<http:listener doc:name="Listener" doc:id="16607e16-9ed4-45b3-b9a2-7fcaad4cc8f7" config-ref="HTTP_Listener_config" path="select"/>
+		<db:select doc:name="Select" doc:id="ac58e529-1d4c-4794-91b7-9a0f0a23f065" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from jobs]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="45489e09-8738-44d1-9330-743107d569be" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="8f49423c-3d3f-453e-b035-9ce736497be4" message="#[payload]"/>
+		<salesforce:create doc:name="Create" doc:id="d56c2116-ebe8-496d-bd8a-742e6f65f469" config-ref="Salesforce_Config" type="Jobs__c">
+			<salesforce:records ><![CDATA[#[output application/java
+---
+payload map ( payload01 , indexOfPayload01 ) -> {
+	Name: payload01.JOB_TITLE,
+	Job_Id__c: payload01.JOB_ID,
+	MAX_SALARY__c: payload01.MAX_SALARY,
+	MIN_SALARY__c: payload01.MIN_SALARY
+}]]]></salesforce:records>
+		</salesforce:create>
+		<ee:transform doc:name="Transform Message" doc:id="596da202-806a-4674-b601-4edee25e2b8b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="63fe0677-1038-476c-b833-cbfd264737d6" message="#[payload]"/>
+	</flow>
+</mule>
